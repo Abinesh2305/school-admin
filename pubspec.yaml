@@ -1,0 +1,98 @@
+name: ClasteqSMS
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.22+23
+
+environment:
+  sdk: ^3.9.0
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  google_fonts: ^6.3.1
+  flutter_neumorphic_plus: ^3.2.0
+  fl_chart: ^1.1.1
+  dio: ^5.9.0
+  flutter_html: ^3.0.0
+  flutter_dotenv: ^6.0.0
+  intl: ^0.20.2
+  file_picker: ^10.3.3
+  flutter_quill: ^11.5.0
+  flutter_quill_extensions: ^11.0.0
+  html_editor_enhanced: ^2.7.1
+  in_app_update: ^4.2.5
+  flutter_launcher_icons: ^0.14.4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.5
+  cached_network_image: ^3.4.1
+  auto_size_text: ^3.0.0
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  firebase_core: ^4.2.1
+  firebase_messaging: ^16.0.4
+  flutter_local_notifications: ^19.5.0
+  package_info_plus: ^8.0.0
+  table_calendar: ^3.1.2
+  open_filex: ^4.7.0
+  record: ^6.0.0
+  audioplayers: ^6.1.0
+  crop_your_image: ^2.0.0
+  flutter_image_compress: ^2.3.0
+  flutter_tts: ^4.1.0
+  youtube_player_flutter: ^9.1.0
+  chewie: ^1.8.2
+  just_audio: ^0.9.40
+  audio_video_progress_bar: ^1.0.0
+  flutter_pdfview: ^1.3.2
+  visibility_detector: ^0.4.0+2
+  url_launcher: ^6.3.1
+  geolocator: ^10.1.0
+  permission_handler: ^11.3.1
+  image_picker: ^1.0.7
+  google_maps_flutter: ^2.6.0
+  camera: ^0.11.3
+  google_mlkit_face_detection: ^0.13.1
+  google_mlkit_commons: ^0.11.0
+  speech_to_text: ^7.3.0
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/clasteq-logo.jpg"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/clasteq-logo.jpg"
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets\clasteqSms_logo.jpeg
+    - assets\clasteq-logo.jpg
+    - assets\1000092688.png
+    - assets\clasteq_loading.gif

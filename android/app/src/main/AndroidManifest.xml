@@ -1,0 +1,85 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+ xmlns:tools="http://schemas.android.com/tools" package="${applicationId}">
+
+    <!-- Internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Camera -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/> 
+
+    <application
+        android:name="${applicationName}"
+        android:label="ClasteqSMS"
+        android:icon="@mipmap/ic_launcher">
+
+
+        <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AIzaSyDx7XXJugS6EKNPba6AnlKLh_UWh_7OwZk" />
+
+        <!-- Firebase notification icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/notification_icon" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- REQUIRED FOR IMAGE CROPPER (VIVO FIX) -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:exported="false" />
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+
+</manifest>
