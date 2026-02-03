@@ -10,10 +10,7 @@ class MasterService {
   final String path;
   final String masterKey;
 
-  MasterService({
-    required this.path,
-    required this.masterKey,
-  });
+  MasterService({required this.path, required this.masterKey});
 
   /* ================= BASE URL ================= */
 
@@ -46,9 +43,7 @@ class MasterService {
   /* ================= URI BUILDER ================= */
 
   Uri _buildUri({String? extraPath}) {
-    final fullPath = extraPath == null
-        ? path
-        : '$path/$extraPath';
+    final fullPath = extraPath == null ? path : '$path/$extraPath';
 
     return Uri.parse('$_baseUrl$fullPath');
   }
@@ -70,9 +65,7 @@ class MasterService {
 
       final List list = body['items'] ?? [];
 
-      return list
-          .map((e) => MasterItem.fromJson(e))
-          .toList();
+      return list.map((e) => MasterItem.fromJson(e)).toList();
     }
 
     throw Exception('Load failed (${res.statusCode})');
@@ -80,30 +73,20 @@ class MasterService {
 
   /* ================= ADD ================= */
 
-  Future<void> add(String name) async {
+  Future<void> add(String name, int sortOrder) async {
     final uri = _buildUri();
 
-    final body = {
-      'name': name,
-      'isActive': true,
-      'sortOrder': 0,
-    };
+    final body = {'name': name, 'isActive': true, 'sortOrder': sortOrder};
 
     print('ADD BODY → $body');
 
-    final res = await http.post(
-      uri,
-      headers: _headers,
-      body: jsonEncode(body),
-    );
+    final res = await http.post(uri, headers: _headers, body: jsonEncode(body));
 
     print('ADD STATUS → ${res.statusCode}');
     print('ADD RESP → ${res.body}');
 
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw Exception(
-        'Add failed (${res.statusCode}) → ${res.body}',
-      );
+      throw Exception('Add failed (${res.statusCode}) → ${res.body}');
     }
   }
 
@@ -115,9 +98,7 @@ class MasterService {
     final res = await http.patch(
       uri,
       headers: _headers,
-      body: jsonEncode({
-        'name': name,
-      }),
+      body: jsonEncode({'name': name}),
     );
 
     if (res.statusCode != 200) {
@@ -133,9 +114,7 @@ class MasterService {
     final res = await http.patch(
       uri,
       headers: _headers,
-      body: jsonEncode({
-        'isActive': status,
-      }),
+      body: jsonEncode({'isActive': status}),
     );
 
     if (res.statusCode != 200) {

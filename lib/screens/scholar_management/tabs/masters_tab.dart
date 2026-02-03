@@ -68,25 +68,38 @@ class _MastersTabState extends State<MastersTab> {
   /* ================= ADD ================= */
 
   void addItem(String master) {
-    final controller = TextEditingController();
+  final controller = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (_) => _dialog(
-        title: 'Add $master',
-        controller: controller,
-        onSave: () async {
-          final service = _service(master);
+  showDialog(
+    context: context,
+    builder: (_) => _dialog(
+      title: 'Add $master',
+      controller: controller,
+      onSave: () async {
+        final service = _service(master);
 
-          await service.add(controller.text.trim());
+        // ✅ Get existing list
+        final list = masters[master] ?? [];
 
-          Navigator.pop(context);
+    
+        final nextOrder = list.isEmpty
+            ? 0
+            : list.map((e) => e.sortOrder).reduce((a, b) => a > b ? a : b) + 1;
 
-          loadAllMasters();
-        },
-      ),
-    );
-  }
+        // ✅ Send with order
+        await service.add(
+          controller.text.trim(),
+          nextOrder,
+        );
+
+        Navigator.pop(context);
+
+        loadAllMasters();
+      },
+    ),
+  );
+}
+
 
   /* ================= EDIT ================= */
 
