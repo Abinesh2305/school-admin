@@ -1,96 +1,242 @@
 import 'package:dio/dio.dart';
-import 'package:hive/hive.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:convert';
+
 import 'dio_client.dart';
+import '../core/constants/app_constants.dart';
+import '../infrastructure/storage/auth_storage_service.dart';
 
 class AuthService {
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final String fcmToken =
-          await FirebaseMessaging.instance.getToken() ?? "";
+  // ===============================
+  // CLIENT PAYLOAD (MATCH BACKEND)
+  // ===============================
+  static const Map<String, dynamic> _clientPayload = {
+    "appName": "SchoolWeb",
+    "appVersion": "1.0.0",
+    "deviceType": "ANDROID",
+    "browserName": "FLUTTER",
+  };
 
-      final Response response = await DioClient.dio.post(
-        'login',
+  // =====================================================
+  //  LOGIN
+  // =====================================================
+
+  Future<Map<String, dynamic>> login({
+    required String identifier,
+    required String password,
+  }) async {
+    try {
+      final response = await DioClient.dio.post(
+        "/identity/school/login",
         data: {
-          'email': email,
-          'password': password,
-          'fcm_token': fcmToken,
-          'device_id': 'device_001',
-          'device_type': 'ANDROID',
+          "identifier": identifier,
+          "password": password,
+          "client": _clientPayload,
         },
       );
 
-      if (response.data["status"] == 1) {
-        final user = response.data["data"];
+      final data = Map<String, dynamic>.from(response.data);
 
-        // 🔹 First install → force password change
-        if (user["is_app_installed"] == 0) {
-          return {
-            "success": true,
-            "forcePasswordChange": true,
-            "userId": user["id"],
-            "apiToken": user["api_token"],
-          };
-        }
+      debugPrint(" LOGIN RESPONSE => $data");
 
-        // 🔹 Save to Hive
-        final box = Hive.box('settings');
-        box.put("user", user);
-        box.put("language", user["language"] ?? "en");
-        box.put("token", user["api_token"]);
+      final box = Hive.box(AppConstants.storageBoxSettings);
 
-        // 🔹 SAFE topic values (NULL-SAFE)
-        final String className = (user["userdetails"]?["is_class_name"] ?? "")
-            .toString()
-            .replaceAll(" ", "_");
+      // ===============================
+      // MULTI SCHOOL LOGIN
+      // ===============================
+      if (data['requiresSchoolSelection'] == true && data['schools'] is List) {
+        // Save linked users
+        final List schools = data['schools'];
 
-        final String section = (user["userdetails"]?["is_section_name"] ?? "")
-            .toString()
-            .replaceAll(" ", "_");
+        final List<Map<String, dynamic>> parsedSchools = schools
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
 
-        // 🔹 Firebase topic subscriptions
-        // Get school_id from user data if available
-        final userSchoolId = user["school_college_id"] ?? user["userdetails"]?["school_id"];
-        if (userSchoolId != null) {
-          await FirebaseMessaging.instance
-              .subscribeToTopic("School_Scholars_$userSchoolId");
-        }
+        await box.put(AppConstants.keyLinkedUsers, parsedSchools);
 
-        await FirebaseMessaging.instance
-            .subscribeToTopic("Scholar_${user["id"]}");
+        //  SAVE SCHOOLS FOR SWITCHING
+        await box.put(AppConstants.keySchools, data['schools']);
 
-        if (className.isNotEmpty && section.isNotEmpty) {
-          await FirebaseMessaging.instance
-              .subscribeToTopic("Section_${className}_$section");
-        }
+        debugPrint("🏫 SCHOOLS SAVED => ${data['schools']}");
 
-        final groups = user["groups"] ?? [];
-        for (final g in groups) {
-          final gid = g["id"];
-          if (gid != null) {
-            await FirebaseMessaging.instance.subscribeToTopic("Group_$gid");
-          }
-        }
-
-        return {"success": true, "user": user};
-      }
-
-      return {
-        "success": false,
-        "message": response.data["message"] ?? "Login failed"
-      };
-    } catch (e, stack) {
-      print("❌ Login Error: $e");
-      print(stack);
-
-      if (e is DioException) {
         return {
-          "success": false,
-          "message": e.response?.data["message"] ?? "API error",
+          "success": true,
+          "requiresSchoolSelection": true,
+          "loginChallengeToken": data['loginChallengeToken'],
+          "schools": data['schools'],
         };
       }
 
-      return {"success": false, "message": e.toString()};
+      // ===============================
+      // DIRECT LOGIN
+      // ===============================
+      if (data['accessToken'] != null) {
+        await _clearOldSession();
+        await _saveAuth(data);
+
+        await subscribeToTopics(
+          _getSchoolIdFromToken(data['accessToken']) ?? 0,
+        );
+
+        return {"success": true, "requiresSchoolSelection": false};
+      }
+
+      return {"success": false, "message": data['message'] ?? "Login failed"};
+    } on DioException catch (e) {
+      debugPrint(" LOGIN ERROR: ${e.response?.data}");
+
+      return {
+        "success": false,
+        "message": e.response?.data?['message'] ?? "Login failed",
+      };
+    } catch (e) {
+      debugPrint(" LOGIN ERROR: $e");
+
+      return {"success": false, "message": "Login failed"};
+    }
+  }
+
+  // =====================================================
+  // COMPLETE SCHOOL LOGIN
+  // =====================================================
+
+  Future<Map<String, dynamic>> completeSchoolLogin({
+    required String loginChallengeToken,
+    required int schoolId,
+  }) async {
+    try {
+      final response = await DioClient.dio.post(
+        "/identity/school/login/complete",
+        data: {
+          "loginChallengeToken": loginChallengeToken,
+          "schoolId": schoolId,
+          "client": _clientPayload,
+        },
+      );
+
+      final data = Map<String, dynamic>.from(response.data);
+
+      debugPrint("📥 COMPLETE LOGIN RESPONSE => $data");
+
+      if (data['accessToken'] == null || data['sessionId'] == null) {
+        throw Exception("Invalid auth response");
+      }
+
+      await _clearOldSession(); //  NEW
+      await _saveAuth(data);
+
+      await subscribeToTopics(schoolId); //  NEW
+
+      return {"success": true};
+    } on DioException catch (e) {
+      debugPrint(" COMPLETE LOGIN ERROR: ${e.response?.data}");
+
+      return {
+        "success": false,
+        "message": e.response?.data?['message'] ?? "Login failed",
+      };
+    } catch (e) {
+      debugPrint(" COMPLETE LOGIN ERROR: $e");
+
+      return {"success": false, "message": "Login failed"};
+    }
+  }
+
+  // =====================================================
+  // CLEAR OLD SESSION (NEW)
+  // =====================================================
+
+  Future<void> _clearOldSession() async {
+    try {
+      debugPrint("🧹 Clearing old session");
+
+      final box = Hive.box(AppConstants.storageBoxSettings);
+
+      // Only clear auth data
+      await box.delete(AppConstants.keyToken);
+      await box.delete(AppConstants.keyRefreshToken);
+      await box.delete(AppConstants.keySessionId);
+      await box.delete(AppConstants.keyUser);
+
+      //  DO NOT delete schools
+      // DO NOT delete linked users
+    } catch (e) {
+      debugPrint("⚠️ Clear session error: $e");
+    }
+  }
+
+  // =====================================================
+  //  FCM SUBSCRIBE
+  // =====================================================
+
+  Future<void> subscribeToTopics(int schoolId) async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+
+      if (token == null || schoolId == 0) return;
+
+      await FirebaseMessaging.instance.subscribeToTopic("School_$schoolId");
+
+      debugPrint(" FCM → School_$schoolId");
+    } catch (e) {
+      debugPrint(" FCM ERROR: $e");
+    }
+  }
+
+  // =====================================================
+  //  SAVE AUTH DATA
+  // =====================================================
+
+  Future<void> _saveAuth(Map<String, dynamic> data) async {
+    final box = Hive.box(AppConstants.storageBoxSettings);
+
+    await AuthStorage.saveAll(
+      token: data['accessToken'],
+      refreshToken: data['refreshToken'],
+      sessionId: data['sessionId'],
+      schoolId: data['schoolId'] ?? _getSchoolIdFromToken(data['accessToken']),
+    );
+
+    // Save user
+    if (data['user'] != null) {
+      await box.put(
+        AppConstants.keyUser,
+        Map<String, dynamic>.from(data['user']),
+      );
+    }
+
+    // Save academic year
+    if (data['academicYearId'] != null) {
+      await box.put(AppConstants.keyAcademicYear, data['academicYearId']);
+    }
+
+    AuthStorage.debugPrintAuth();
+
+    debugPrint("✅ AUTH STORAGE COMPLETE");
+  }
+
+  // =====================================================
+  //   JWT → SCHOOL ID
+  // =====================================================
+
+  int? _getSchoolIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+
+      final decoded = String.fromCharCodes(
+        base64Url.decode(base64Url.normalize(payload)),
+      );
+
+      final map = Map<String, dynamic>.from(jsonDecode(decoded));
+
+      return int.tryParse(map['school_id']?.toString() ?? '');
+    } catch (_) {
+      return null;
     }
   }
 }

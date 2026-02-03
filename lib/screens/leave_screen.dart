@@ -37,7 +37,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
   File? _imageFile;
   File? _documentFile;
   String? _attachmentType; // 'audio', 'image', 'document'
-  
+
   bool _recording = false;
   bool _playing = false;
   bool _loading = false;
@@ -117,9 +117,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
     final richText = await _richTextController.plainText;
     final res = await LeaveService().applyLeave(
-      leaveReason: richText.isNotEmpty 
-          ? richText 
-          : _reasonController.text,
+      leaveReason: richText.isNotEmpty ? richText : _reasonController.text,
       leaveDate: leaveStart,
       leaveType: _leaveType,
       leaveEndDate: leaveEnd,
@@ -129,7 +127,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
     setState(() => _loading = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res?['message'] ?? t.somethingWentWrong)));
+      SnackBar(content: Text(res?['message'] ?? t.somethingWentWrong)),
+    );
 
     if (res?['status'] == 1) {
       _reasonController.clear();
@@ -151,7 +150,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
     setState(() => _loading = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res?['message'] ?? t.errorCancellingLeave)));
+      SnackBar(content: Text(res?['message'] ?? t.errorCancellingLeave)),
+    );
 
     if (res?['status'] == 1) _loadUnapprovedLeaves();
   }
@@ -187,10 +187,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
         _audioRecorder
             .onAmplitudeChanged(const Duration(milliseconds: 150))
             .listen((amp) {
-          if (mounted) {
-            setState(() => _currentAmplitude = amp.current);
-          }
-        });
+              if (mounted) {
+                setState(() => _currentAmplitude = amp.current);
+              }
+            });
 
         setState(() {
           _recording = true;
@@ -198,8 +198,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
         });
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t.microphonePermissionDenied)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.microphonePermissionDenied)));
       }
     }
   }
@@ -238,9 +239,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
   Future<File?> _openCropScreen(File file) async {
     return Navigator.push<File?>(
       context,
-      MaterialPageRoute(
-        builder: (_) => CropYourImageScreen(imageFile: file),
-      ),
+      MaterialPageRoute(builder: (_) => CropYourImageScreen(imageFile: file)),
     );
   }
 
@@ -312,9 +311,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error opening camera: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error opening camera: $e')));
     }
   }
 
@@ -359,9 +358,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
     }
   }
 
@@ -400,9 +399,13 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   children: [
                     _buildApplyForm(colorScheme, t),
                     const SizedBox(height: 24),
-                    Text(t.pendingLeaves,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      t.pendingLeaves,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     if (_pendingLeaves.isEmpty)
                       Center(child: Text(t.noPendingLeaves)),
@@ -444,21 +447,26 @@ class _LeaveScreenState extends State<LeaveScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(t.applyForLeave,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(
+                t.applyForLeave,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _leaveType,
                 decoration: InputDecoration(labelText: t.leaveType),
-                items: [
-                  'FULL DAY',
-                  'HALF MORNING',
-                  'HALF AFTERNOON',
-                  'MORE THAN ONE DAY'
-                ]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
+                items:
+                    [
+                          'FULL DAY',
+                          'HALF MORNING',
+                          'HALF AFTERNOON',
+                          'MORE THAN ONE DAY',
+                        ]
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
                 onChanged: (v) => setState(() => _leaveType = v ?? 'FULL DAY'),
               ),
               const SizedBox(height: 12),
@@ -518,7 +526,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
                 opacity: 0,
                 child: TextFormField(
                   controller: _reasonController,
-                  validator: (v) => v == null || v.isEmpty ? t.enterReason : null,
+                  validator: (v) =>
+                      v == null || v.isEmpty ? t.enterReason : null,
                 ),
               ),
               const SizedBox(height: 16),
@@ -606,7 +615,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
                         onPressed: _removeImage,
                       ),
                     ],
@@ -654,7 +666,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
                         onPressed: _removeDocument,
                       ),
                     ],
@@ -710,7 +725,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         onPressed: _togglePlayback,
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
                         onPressed: _removeAudio,
                       ),
                     ],

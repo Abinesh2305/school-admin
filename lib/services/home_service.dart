@@ -1,25 +1,39 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/material.dart';
+import '../core/constants/app_constants.dart';
 import 'dio_client.dart';
 
 class HomeService {
   static Future<void> syncHomeContents() async {
-    final box = Hive.box('settings');
-    final user = box.get('user');
-    final token = box.get('token');
-    if (user == null) return;
+    try {
+      final box = Hive.box(AppConstants.storageBoxSettings);
 
-    final fcm = await FirebaseMessaging.instance.getToken();
+      final user = box.get(AppConstants.keyUser);
+      final token = box.get(AppConstants.keyToken);
 
-    final res = await DioClient.dio.post(
-      'homecontents',
-      data: {
-        'user_id': user['id'],
-        'api_token': token,
-        'fcm_token': fcm,
-      },
-    );
+      debugPrint(" Home Sync Started");
 
-    print("HomeContents Response: ${res.data}");
+      if (user == null || token == null) {
+        debugPrint(" Home Sync Failed: user/token null");
+        return;
+      }
+
+      final fcm = await FirebaseMessaging.instance.getToken();
+
+      final res = await DioClient.dio.post(
+        '/homecontents', 
+        data: {
+          'user_id': user['id'],
+          'fcm_token': fcm,
+        },
+      );
+
+      debugPrint(" HomeContents => ${res.data}");
+      debugPrint(" Home Sync Done");
+
+    } catch (e) {
+      debugPrint(" Home Sync Error: $e");
+    }
   }
 }

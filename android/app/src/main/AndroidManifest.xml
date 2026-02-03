@@ -27,7 +27,8 @@
     <application
         android:name="${applicationName}"
         android:label="ClasteqSMS"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
 
 
         <meta-data

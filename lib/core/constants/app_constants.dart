@@ -5,7 +5,7 @@ class AppConstants {
   static const String appVersion = '3.1.24';
   
   // API Constants
-  static const String baseUrl = 'https://mock-backend.local';
+  static const String baseUrl = 'https://api.clasteqsms.in/api';
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 15);
   
@@ -15,14 +15,25 @@ class AppConstants {
   static const String storageBoxPendingReadsHomework = 'pending_reads_homework';
   
   // User Preferences Keys
-  static const String keyUser = 'user';
-  static const String keyToken = 'token';
-  static const String keyLanguage = 'language';
-  static const String keyThemeMode = 'themeMode';
-  static const String keyLinkedUsers = 'linked_users';
-  static const String keyIsFirstLaunch = 'is_first_launch';
-  static const String keyUpdateRequested = 'updateRequested';
-  static const String keyLastVersion = 'lastVersion';
+  // User Preferences Keys
+static const String keyUser = 'user';
+static const String keyToken = 'token';
+static const String keyRefreshToken = 'refresh_token';
+static const String keySessionId = 'session_id';
+static const String keyLanguage = 'language';
+static const String keyThemeMode = 'themeMode';
+static const String keyLinkedUsers = 'linked_users';
+static const String keyIsFirstLaunch = 'is_first_launch';
+static const String keyUpdateRequested = 'updateRequested';
+static const String keyLastVersion = 'lastVersion';
+static const String keySchoolId = 'school_id';
+static const String keyActiveSchool = 'active_school';
+static const String storageBoxCache = "cache";
+static const String keySchools = "schools";
+
+// Academic year
+static const String keyAcademicYear = "academic_year_id";
+
   
   // Default Values
   static const String defaultLanguage = 'en';
@@ -30,7 +41,7 @@ class AppConstants {
   static const String defaultSchoolId = '1';
   
   // Network Headers
-  static const String headerAccept = 'application/json';
+  static const String headerAccept = 'Accept';
   static const String headerApiKey = 'x-api-key';
   
   // Pagination

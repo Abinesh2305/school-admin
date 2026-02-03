@@ -77,10 +77,7 @@ class LeaveService {
 
       final res = await _dio.post(
         'unapproved_leaves',
-        data: {
-          'user_id': user['id'],
-          'api_token': token,
-        },
+        data: {'user_id': user['id'], 'api_token': token},
         options: Options(headers: {'x-api-key': token}),
       );
       return res.data;
@@ -98,11 +95,7 @@ class LeaveService {
 
       final res = await _dio.post(
         'cancel_leave',
-        data: {
-          'user_id': user['id'],
-          'api_token': token,
-          'leave_id': leaveId,
-        },
+        data: {'user_id': user['id'], 'api_token': token, 'leave_id': leaveId},
         options: Options(headers: {'x-api-key': token}),
       );
       return res.data;

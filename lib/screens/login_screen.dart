@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../l10n/app_localizations.dart';
 import '../services/auth_service.dart';
-import '../main.dart';
 import 'forgot_password_screen.dart';
-import 'change_password_screen.dart';
-import 'splash_screen.dart';
+import 'school_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;
@@ -39,83 +37,61 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() async {
-    final t = AppLocalizations.of(context)!;
+  final t = AppLocalizations.of(context)!;
 
-    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t.emptyFieldError)),
-      );
-      return;
-    }
-
-    setState(() => isLoading = true);
-
-    final response = await _authService.login(
-      emailController.text,
-      passwordController.text,
+  if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(t.emptyFieldError)),
     );
-
-    setState(() => isLoading = false);
-
-    if (response['forcePasswordChange'] == true) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChangePasswordScreen(
-            userId: response['userId'],
-            apiToken: response['apiToken'],
-          ),
-        ),
-      );
-      return;
-    }
-
-    if (response['success']) {
-      if (rememberMe) {
-        var box = Hive.box('settings');
-        box.put('saved_email', emailController.text);
-        box.put('saved_password', passwordController.text);
-      }
-
-      // IMPORTANT: Sync topics + save topics_subscribed in DB
-      // await HomeService.syncHomeContents();
-
-      if (response['success']) {
-        if (rememberMe) {
-          var box = Hive.box('settings');
-          box.put('saved_email', emailController.text);
-          box.put('saved_password', passwordController.text);
-        }
-
-        final box = Hive.box('settings');
-        final bool isFirstLaunch =
-            box.get('is_first_launch', defaultValue: true);
-
-        if (isFirstLaunch) {
-          await box.put('is_first_launch', false);
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const SplashScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MainNavigationScreen(
-                onToggleTheme: widget.onToggleTheme,
-                onToggleLanguage: widget.onToggleLanguage,
-              ),
-            ),
-          );
-        }
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response['message'] ?? t.loginFailed)),
-      );
-    }
+    return;
   }
+
+  setState(() => isLoading = true);
+
+  final response = await _authService.login(
+    identifier: emailController.text,
+    password: passwordController.text,
+  );
+
+  setState(() => isLoading = false);
+
+  // ❌ LOGIN FAILED
+  if (response['success'] != true) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response['message'] ?? t.loginFailed)),
+    );
+    return;
+  }
+
+  // ✅ SAVE REMEMBER ME
+  if (rememberMe) {
+    final box = Hive.box('settings');
+    box.put('saved_email', emailController.text);
+    box.put('saved_password', passwordController.text);
+  }
+
+  // 🔁 SCHOOL SELECTION REQUIRED
+  if (response['requiresSchoolSelection'] == true) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SchoolSelectionScreen(
+          schools: response['schools'],
+          loginChallengeToken: response['loginChallengeToken'],
+          onToggleTheme: widget.onToggleTheme,
+          onToggleLanguage: widget.onToggleLanguage,
+        ),
+      ),
+    );
+    return;
+  }
+
+  // ❌ SHOULD NEVER HAPPEN (SAFE GUARD)
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(t.loginFailed)),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

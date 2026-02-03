@@ -9,8 +9,6 @@ plugins {
 
 android {
     namespace = "com.clasteq.admin"
-
-    // REQUIRED FIXES
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -18,7 +16,7 @@ android {
     applicationId = "com.clasteq.admin"
 
     minSdk = flutter.minSdkVersion
-    targetSdk = flutter.targetSdkVersion
+    targetSdk = 34
 
     versionCode = flutter.versionCode
     versionName = flutter.versionName
@@ -26,6 +24,7 @@ android {
     multiDexEnabled = true
     manifestPlaceholders["appName"] = "ClasteqSMS"
 }
+
 
     signingConfigs {
         create("release") {

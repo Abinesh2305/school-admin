@@ -5,6 +5,8 @@ import '../main.dart';
 import '../screens/profile_screen.dart';
 import 'alerts_submenu_screen.dart';
 import 'staff_attendance_screen.dart';
+import '../screens/scholar_management/scholar_management_screen.dart';
+
 
 class MenuScreen extends StatelessWidget {
   final VoidCallback onLogout;
@@ -22,17 +24,22 @@ class MenuScreen extends StatelessWidget {
       {
         'icon': Icons.notifications_none,
         'label': 'Noticeboard',
-        'action': 'noticeboard'
+        'action': 'noticeboard',
       },
       {
         'icon': Icons.warning_amber_outlined,
         'label': 'Alerts',
-        'action': 'alerts'
+        'action': 'alerts',
       },
       {
         'icon': Icons.calendar_month,
         'label': t.attendance,
-        'action': 'attendance'
+        'action': 'attendance',
+      },
+      {
+        'icon': Icons.person,
+        'label': 'Scholar Management',
+        'action': 'ScholarManagement',
       },
     ];
 
@@ -70,9 +77,7 @@ class MenuScreen extends StatelessWidget {
       case 'profile':
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ProfileScreen(onLogout: onLogout),
-          ),
+          MaterialPageRoute(builder: (_) => ProfileScreen(onLogout: onLogout)),
         );
         break;
 
@@ -96,16 +101,19 @@ class MenuScreen extends StatelessWidget {
         );
         break;
 
-
       case 'attendance':
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const StaffAttendanceScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const StaffAttendanceScreen()),
         );
         break;
-
+        case 'ScholarManagement': 
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ScholarManagementScreen(),
+        ),
+      );
     }
   }
 
@@ -139,9 +147,7 @@ class MenuScreen extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ],
           ),

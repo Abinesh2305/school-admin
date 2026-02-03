@@ -15,13 +15,12 @@ class UserService {
 
       final response = await DioClient.dio.post(
         'getmobilescholars',
-        data: {
-          "user_id": user['id'],
-          "api_token": token,
-        },
-        options: Options(headers: {
-          "x-api-key": token, // Required in API
-        }),
+        data: {"user_id": user['id'], "api_token": token},
+        options: Options(
+          headers: {
+            "x-api-key": token, // Required in API
+          },
+        ),
       );
 
       if (response.data["status"] == 1) {

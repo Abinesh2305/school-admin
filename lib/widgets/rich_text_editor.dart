@@ -59,6 +59,13 @@ class _RichTextEditorState extends State<RichTextEditor> {
     return totalHeight - toolbarHeight;
   }
 
+  Future<String> cleanHtml(String html) async {
+  return html
+      .replaceAll(RegExp(r'<p><br></p>', caseSensitive: false), '')
+      .trim();
+}
+
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -126,77 +133,41 @@ class _RichTextEditorState extends State<RichTextEditor> {
           ],
           // Editor with responsive toolbar
           ClipRRect(
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(8),
               bottomRight: Radius.circular(8),
             ),
-            child: SizedBox(
-              height: totalHeight,
-              child: HtmlEditor(
-                controller: widget.controller,
-                htmlEditorOptions: HtmlEditorOptions(
-                  hint: widget.hint ?? 'Enter your message...',
-                  shouldEnsureVisible: true,
-                  darkMode: isDark,
-                  autoAdjustHeight: false,
-                  adjustHeightForKeyboard: true,
-                  initialText: '',
+            child: HtmlEditor(
+              controller: widget.controller,
+              htmlEditorOptions: HtmlEditorOptions(
+                hint: widget.hint ?? 'Enter your message...',
+                darkMode: isDark,
+                autoAdjustHeight: true, // ✅ IMPORTANT
+                shouldEnsureVisible: true,
+                adjustHeightForKeyboard: true,
+              ),
+              htmlToolbarOptions: widget.readOnly
+                  ? const HtmlToolbarOptions(
+                      toolbarPosition: ToolbarPosition.custom,
+                    )
+                  : _buildResponsiveToolbar(
+                      context,
+                      isMobile,
+                      isDark,
+                      colorScheme,
+                    ),
+              otherOptions: const OtherOptions(
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.fromBorderSide(BorderSide.none),
                 ),
-                htmlToolbarOptions: widget.readOnly
-                    ? const HtmlToolbarOptions(
-                        toolbarPosition: ToolbarPosition.custom,
-                      )
-                    : _buildResponsiveToolbar(
-                        context,
-                        isMobile,
-                        isDark,
-                        colorScheme,
-                      ),
-                otherOptions: OtherOptions(
-                  height: editorHeight,
-                  decoration: const BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.fromBorderSide(BorderSide.none),
-                  ),
-                ),
-
-                callbacks: Callbacks(
-                  onInit: () {
-                    // Editor initialized
-                  },
-                  onChangeContent: (String? changed) {
-                    if (widget.onChanged != null && changed != null) {
-                      widget.onChanged!(changed);
-                    }
-                  },
-                  onEnter: () {
-                    // Enter key pressed
-                  },
-                  onFocus: () {
-                    // Editor focused
-                  },
-                  onBlur: () {
-                    // Editor blurred
-                  },
-                  onKeyDown: (int? keyCode) {
-                    // Key pressed
-                  },
-                  onKeyUp: (int? keyCode) {
-                    // Key released
-                  },
-                  onMouseDown: () {
-                    // Mouse down
-                  },
-                  onMouseUp: () {
-                    // Mouse up
-                  },
-                  onPaste: () {
-                    // Paste event
-                  },
-                  onScroll: () {
-                    // Scroll event
-                  },
-                ),
+              ),
+              callbacks: Callbacks(
+                onChangeContent: (String? changed) {
+                  if (widget.onChanged != null && changed != null) {
+                    widget.onChanged!(changed);
+                  }
+                },
               ),
             ),
           ),

@@ -9,7 +9,8 @@ class HomeworkManagementScreen extends StatefulWidget {
   const HomeworkManagementScreen({super.key});
 
   @override
-  State<HomeworkManagementScreen> createState() => _HomeworkManagementScreenState();
+  State<HomeworkManagementScreen> createState() =>
+      _HomeworkManagementScreenState();
 }
 
 class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
@@ -34,9 +35,9 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading homeworks: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading homeworks: $e')));
       }
     }
   }
@@ -46,9 +47,7 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => HomeworkFormScreen(
-          richTextController: controller,
-        ),
+        builder: (_) => HomeworkFormScreen(richTextController: controller),
       ),
     );
     controller.dispose();
@@ -103,13 +102,8 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
 
         await DioClient.dio.delete(
           'admin/homework/${homework['id']}',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
-          data: {
-            'user_id': user['id'],
-            'api_token': token,
-          },
+          options: Options(headers: {'x-api-key': token}),
+          data: {'user_id': user['id'], 'api_token': token},
         );
 
         if (mounted) {
@@ -136,13 +130,8 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
 
       await DioClient.dio.post(
         'admin/homework/${homework['id']}/approve',
-        options: Options(
-          headers: {'x-api-key': token},
-        ),
-        data: {
-          'user_id': user['id'],
-          'api_token': token,
-        },
+        options: Options(headers: {'x-api-key': token}),
+        data: {'user_id': user['id'], 'api_token': token},
       );
 
       if (mounted) {
@@ -153,9 +142,9 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error approving homework: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error approving homework: $e')));
       }
     }
   }
@@ -163,9 +152,7 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Homework Management'),
-      ),
+      appBar: AppBar(title: const Text('Homework Management')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -217,12 +204,21 @@ class _HomeworkManagementScreenState extends State<HomeworkManagementScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      homework['description']?.toString().substring(
-                                            0,
-                                            (homework['description']?.toString().length ?? 0) > 50
-                                                ? 50
-                                                : (homework['description']?.toString().length ?? 0),
-                                          ) ??
+                                      homework['description']
+                                              ?.toString()
+                                              .substring(
+                                                0,
+                                                (homework['description']
+                                                                ?.toString()
+                                                                .length ??
+                                                            0) >
+                                                        50
+                                                    ? 50
+                                                    : (homework['description']
+                                                              ?.toString()
+                                                              .length ??
+                                                          0),
+                                              ) ??
                                           '',
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -349,18 +345,14 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
         // Update existing homework
         await DioClient.dio.put(
           'admin/homework/${widget.homework['id']}',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
+          options: Options(headers: {'x-api-key': token}),
           data: data,
         );
       } else {
         // Create new homework
         await DioClient.dio.post(
           'admin/homework',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
+          options: Options(headers: {'x-api-key': token}),
           data: data,
         );
       }
@@ -368,9 +360,11 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.homework != null
-                ? 'Homework updated successfully'
-                : 'Homework created successfully'),
+            content: Text(
+              widget.homework != null
+                  ? 'Homework updated successfully'
+                  : 'Homework created successfully',
+            ),
           ),
         );
         Navigator.pop(context, true);
@@ -378,9 +372,9 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving homework: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving homework: $e')));
       }
     }
   }
@@ -389,7 +383,9 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.homework != null ? 'Edit Homework' : 'Create Homework'),
+        title: Text(
+          widget.homework != null ? 'Edit Homework' : 'Create Homework',
+        ),
         actions: [
           if (_loading)
             const Padding(
@@ -401,10 +397,7 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveHomework,
-            ),
+            IconButton(icon: const Icon(Icons.save), onPressed: _saveHomework),
         ],
       ),
       body: Form(
@@ -452,4 +445,3 @@ class _HomeworkFormScreenState extends State<HomeworkFormScreen> {
     );
   }
 }
-

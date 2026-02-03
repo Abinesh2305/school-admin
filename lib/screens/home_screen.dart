@@ -8,6 +8,10 @@ import '../services/fees_service.dart';
 import 'package:html/parser.dart' as html_parser;
 import '../presentation/core/widgets/loading_indicator.dart';
 import '../presentation/core/widgets/animated_card.dart';
+import '../services/fcm_helper.dart';
+import 'package:google_api_availability/google_api_availability.dart';
+import '../services/app_review_service.dart';
+import '../services/review_tracker.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic>? user;
@@ -24,12 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String todayStatus = "";
   bool _loading = true;
   String? _currentUserId;
-  
+
   // Expandable sections state
   bool _alertsExpanded = false;
   bool _examsExpanded = false;
   bool _feesExpanded = false;
-  
+
   // Data for expandable sections
   List<dynamic> _todayAlerts = [];
   List<dynamic> _exams = [];
@@ -42,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadAttendanceData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPlayServiceWarningIfNeeded();
+    });
   }
 
   @override
@@ -54,8 +61,74 @@ class _HomeScreenState extends State<HomeScreen> {
     final box = Hive.box('settings');
     final user = box.get('user');
     final newUserId = user?['id']?.toString();
+
     if (newUserId != _currentUserId) {
+      _currentUserId = newUserId;
       _loadAttendanceData();
+    }
+  }
+
+  Future<bool> _showExitRating(BuildContext context) async {
+    const appVersion = '3.1.22';
+
+    final canAsk = await ReviewTracker.canAskReview(appVersion);
+    if (!canAsk) return true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        title: const Text("Enjoying the app?"),
+        content: const Text(
+          "If you like the app, please take a moment to rate us ⭐",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await ReviewTracker.markLater();
+              Navigator.pop(context, true);
+            },
+            child: const Text("Later"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await AppReviewService.requestPublicReview(
+                androidPackageName: 'com.clasteq.admin',
+              );
+              await ReviewTracker.markRated(appVersion);
+              Navigator.pop(context, true);
+            },
+            child: const Text("Rate Now"),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? true;
+  }
+
+  Future<void> _showPlayServiceWarningIfNeeded() async {
+    if (!mounted) return;
+
+    final status = await GoogleApiAvailability.instance
+        .checkGooglePlayServicesAvailability();
+
+    if (!mounted) return; // ✅ important
+
+    if (status != GooglePlayServicesAvailability.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Notifications may not work. Google Play Services is not available.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'SETTINGS',
+            onPressed: openGooglePlayServicesSettings,
+          ),
+        ),
+      );
     }
   }
 
@@ -63,7 +136,16 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final box = Hive.box('settings');
       final user = box.get('user');
-      if (user == null) return;
+
+      if (user == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _loading = false;
+        });
+
+        return;
+      }
 
       final now = DateTime.now();
       final monthYear = "${now.year}-${now.month.toString().padLeft(2, '0')}";
@@ -82,8 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
           status = 'Leave';
         } else if ((data['leave_days'] ?? []).contains(today)) {
           status = 'Holiday';
-        } else if ((data['holidays'] ?? [])
-            .any((h) => h['holiday_date'] == today)) {
+        } else if ((data['holidays'] ?? []).any(
+          (h) => h['holiday_date'] == today,
+        )) {
           status = 'Holiday';
         } else {
           status = 'Absent';
@@ -115,266 +198,297 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     final settingsBox = Hive.box('settings');
-    return Scaffold(
-      body: _loading
-          ? LoadingIndicator()
-          : ValueListenableBuilder(
-              valueListenable:
-                  settingsBox.listenable(keys: ['user', 'pf_img_cb']),
-              builder: (context, Box box, _) {
-                final data = box.get('user', defaultValue: {}) as Map;
-                final userDetails = data['userdetails'] ?? {};
+    return WillPopScope(
+      onWillPop: () => _showExitRating(context),
+      child: Scaffold(
+        body: _loading
+            ? LoadingIndicator()
+            : ValueListenableBuilder(
+                valueListenable: settingsBox.listenable(
+                  keys: ['user', 'pf_img_cb'],
+                ),
+                builder: (context, Box box, _) {
+                  final data = box.get('user', defaultValue: {}) as Map;
+                  final userDetails = data['userdetails'] ?? {};
 
-                final String name = data['name']?.toString() ?? "Unknown";
-                final String admissionNo =
-                    data['admission_no']?.toString() ?? "N/A";
-                final String mobile = data['mobile']?.toString() ?? "N/A";
-                final String className =
-                    userDetails['is_class_name']?.toString() ?? "N/A";
-                final String section =
-                    userDetails['is_section_name']?.toString() ?? "N/A";
+                  final String name = data['name']?.toString() ?? "Unknown";
+                  final String admissionNo =
+                      data['admission_no']?.toString() ?? "N/A";
+                  final String mobile = data['mobile']?.toString() ?? "N/A";
+                  final String className =
+                      userDetails['is_class_name']?.toString() ?? "N/A";
+                  final String section =
+                      userDetails['is_section_name']?.toString() ?? "N/A";
 
-                final int cb = box.get('pf_img_cb', defaultValue: 0) as int;
+                  final int cb = box.get('pf_img_cb', defaultValue: 0) as int;
 
-                final String rawImageUrl = (data['is_profile_image'] ??
-                        "https://www.clasteqsms.com/multischool/public/image/default.png")
-                    .toString();
+                  final String rawImageUrl =
+                      (data['is_profile_image'] ??
+                              "https://www.clasteqsms.com/multischool/public/image/default.png")
+                          .toString();
 
-                final String profileImage = "$rawImageUrl?cb=$cb";
+                  final String profileImage = "$rawImageUrl?cb=$cb";
 
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      AnimatedCard(
-                        index: 0,
-                        color: colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  profileImage,
-                                  key: ValueKey(profileImage),
-                                  width: 200,
-                                  height: 250,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 200,
-                                      height: 200,
-                                      color:
-                                          colorScheme.primary.withOpacity(0.2),
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 60,
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    );
-                                  },
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        AnimatedCard(
+                          index: 0,
+                          color: colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    profileImage,
+                                    key: ValueKey(profileImage),
+                                    width: 200,
+                                    height: 250,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 200,
+                                        height: 200,
+                                        color: colorScheme.primary.withOpacity(
+                                          0.2,
+                                        ),
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onSurface,
+                                        ),
                                       ),
+                                      const SizedBox(height: 8),
+                                      _buildDetailItem(
+                                        t.classLabel,
+                                        className,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildDetailItem(
+                                        t.sectionLabel,
+                                        section,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildDetailItem(
+                                        t.admissionNoLabel,
+                                        admissionNo,
+                                        colorScheme,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildDetailItem(
+                                        t.contactLabel,
+                                        mobile,
+                                        colorScheme,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        AnimatedCard(
+                          index: 1,
+                          delay: const Duration(milliseconds: 100),
+                          color: colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                Text(
+                                  t.attendanceTitle,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Column(
+                                      children: [
+                                        Text(
+                                          t.todayStatus,
+                                          style: TextStyle(
+                                            color: colorScheme.onSurface,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(todayStatus),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            _getStatusText(todayStatus, t),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    _buildDetailItem(
-                                        t.classLabel, className, colorScheme),
-                                    const SizedBox(height: 8),
-                                    _buildDetailItem(
-                                        t.sectionLabel, section, colorScheme),
-                                    const SizedBox(height: 8),
-                                    _buildDetailItem(t.admissionNoLabel,
-                                        admissionNo, colorScheme),
-                                    const SizedBox(height: 8),
-                                    _buildDetailItem(
-                                        t.contactLabel, mobile, colorScheme),
+                                    Column(
+                                      children: [
+                                        Text(
+                                          t.attendancePercentage,
+                                          style: TextStyle(
+                                            color: colorScheme.onSurface,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            "${attendancePercent.toStringAsFixed(1)}%",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      AnimatedCard(
-                        index: 1,
-                        delay: const Duration(milliseconds: 100),
-                        color: colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              Text(
-                                t.attendanceTitle,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  Column(
-                                    children: [
-                                      Text(
-                                        t.todayStatus,
-                                        style: TextStyle(
-                                          color: colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 20, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: _getStatusColor(todayStatus),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          _getStatusText(todayStatus, t),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    children: [
-                                      Text(
-                                        t.attendancePercentage,
-                                        style: TextStyle(
-                                          color: colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 24, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          "${attendancePercent.toStringAsFixed(1)}%",
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
+                        const SizedBox(height: 16),
+                        AnimatedCard(
+                          index: 2,
+                          delay: const Duration(milliseconds: 200),
+                          child: _buildExpandableSection(
+                            title: t.todayAlerts,
+                            colorScheme: colorScheme,
+                            isExpanded: _alertsExpanded,
+                            onExpansionChanged: (expanded) {
+                              setState(() {
+                                _alertsExpanded = expanded;
+                                if (expanded &&
+                                    _todayAlerts.isEmpty &&
+                                    !_loadingAlerts) {
+                                  _loadTodayAlerts();
+                                }
+                              });
+                            },
+                            child: _buildAlertsContent(colorScheme, t),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      AnimatedCard(
-                        index: 2,
-                        delay: const Duration(milliseconds: 200),
-                        child: _buildExpandableSection(
-                          title: t.todayAlerts,
-                          colorScheme: colorScheme,
-                          isExpanded: _alertsExpanded,
-                          onExpansionChanged: (expanded) {
-                            setState(() {
-                              _alertsExpanded = expanded;
-                              if (expanded && _todayAlerts.isEmpty && !_loadingAlerts) {
-                                _loadTodayAlerts();
-                              }
-                            });
-                        },
-                          child: _buildAlertsContent(colorScheme, t),
+                        const SizedBox(height: 12),
+                        AnimatedCard(
+                          index: 3,
+                          delay: const Duration(milliseconds: 300),
+                          child: _buildExpandableSection(
+                            title: t.exams,
+                            colorScheme: colorScheme,
+                            isExpanded: _examsExpanded,
+                            onExpansionChanged: (expanded) {
+                              setState(() {
+                                _examsExpanded = expanded;
+                                if (expanded &&
+                                    _exams.isEmpty &&
+                                    !_loadingExams) {
+                                  _loadExams();
+                                }
+                              });
+                            },
+                            child: _buildExamsContent(colorScheme, t),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      AnimatedCard(
-                        index: 3,
-                        delay: const Duration(milliseconds: 300),
-                        child: _buildExpandableSection(
-                          title: t.exams,
-                          colorScheme: colorScheme,
-                          isExpanded: _examsExpanded,
-                          onExpansionChanged: (expanded) {
-                            setState(() {
-                              _examsExpanded = expanded;
-                              if (expanded && _exams.isEmpty && !_loadingExams) {
-                                _loadExams();
-                              }
-                            });
-                          },
-                          child: _buildExamsContent(colorScheme, t),
+                        const SizedBox(height: 12),
+                        AnimatedCard(
+                          index: 4,
+                          delay: const Duration(milliseconds: 400),
+                          child: _buildExpandableSection(
+                            title: t.feeDetails,
+                            colorScheme: colorScheme,
+                            isExpanded: _feesExpanded,
+                            onExpansionChanged: (expanded) {
+                              setState(() {
+                                _feesExpanded = expanded;
+                                if (expanded &&
+                                    _feesSummary == null &&
+                                    !_loadingFees) {
+                                  _loadFees();
+                                }
+                              });
+                            },
+                            child: _buildFeesContent(colorScheme, t),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      AnimatedCard(
-                        index: 4,
-                        delay: const Duration(milliseconds: 400),
-                        child: _buildExpandableSection(
-                          title: t.feeDetails,
-                          colorScheme: colorScheme,
-                          isExpanded: _feesExpanded,
-                          onExpansionChanged: (expanded) {
-                            setState(() {
-                              _feesExpanded = expanded;
-                              if (expanded && _feesSummary == null && !_loadingFees) {
-                                _loadFees();
-                              }
-                            });
-                          },
-                          child: _buildFeesContent(colorScheme, t),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 
@@ -446,57 +560,57 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           InkWell(
             onTap: () => onExpansionChanged(!isExpanded),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                colorScheme.primary.withOpacity(0.15),
-                colorScheme.primary.withOpacity(0.08),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colorScheme.primary.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary.withOpacity(0.15),
+                    colorScheme.primary.withOpacity(0.08),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.primary.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Flexible(
                     child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                  letterSpacing: 0.5,
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                        letterSpacing: 0.5,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.visible,
                       softWrap: true,
-                ),
-              ),
-              const SizedBox(width: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
                       Icons.keyboard_arrow_down,
                       size: 24,
-                color: colorScheme.primary,
-              ),
+                      color: colorScheme.primary,
+                    ),
                   ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
           if (isExpanded)
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
@@ -589,9 +703,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             'No alerts for today',
-            style: TextStyle(
-              color: colorScheme.onSurface.withOpacity(0.6),
-            ),
+            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
           ),
         ),
       );
@@ -601,12 +713,8 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: _todayAlerts.take(5).map<Widget>((alert) {
         final title = alert['title'] ?? 'Untitled';
-        final message = html_parser
-                .parse(alert['message'] ?? '')
-                .body
-                ?.text
-                .trim() ??
-            '';
+        final message =
+            html_parser.parse(alert['message'] ?? '').body?.text.trim() ?? '';
         final date = alert['is_notify_datetime'] ?? alert['created_at'] ?? '';
 
         return Container(
@@ -615,9 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: colorScheme.outline.withOpacity(0.2),
-            ),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,7 +742,9 @@ class _HomeScreenState extends State<HomeScreen> {
               if (message.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
-                  message.length > 100 ? '${message.substring(0, 100)}...' : message,
+                  message.length > 100
+                      ? '${message.substring(0, 100)}...'
+                      : message,
                   style: TextStyle(
                     fontSize: 12,
                     color: colorScheme.onSurface.withOpacity(0.7),
@@ -679,9 +787,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             'No exams available',
-            style: TextStyle(
-              color: colorScheme.onSurface.withOpacity(0.6),
-            ),
+            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
           ),
         ),
       );
@@ -700,9 +806,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: colorScheme.outline.withOpacity(0.2),
-            ),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -761,9 +865,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             'No fee details available',
-            style: TextStyle(
-              color: colorScheme.onSurface.withOpacity(0.6),
-            ),
+            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
           ),
         ),
       );
@@ -822,12 +924,22 @@ class _HomeScreenState extends State<HomeScreen> {
         if (dueFees != null && dueFees.isNotEmpty)
           _buildFeeSection('Due', dueFees, Colors.orange, colorScheme),
         if (pendingFees != null && pendingFees.isNotEmpty)
-          _buildFeeSection('Pending', pendingFees, Colors.blueGrey, colorScheme),
+          _buildFeeSection(
+            'Pending',
+            pendingFees,
+            Colors.blueGrey,
+            colorScheme,
+          ),
       ],
     );
   }
 
-  Widget _buildFeeSection(String title, List<dynamic> items, Color color, ColorScheme colorScheme) {
+  Widget _buildFeeSection(
+    String title,
+    List<dynamic> items,
+    Color color,
+    ColorScheme colorScheme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -847,9 +959,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: colorScheme.outline.withOpacity(0.2),
-              ),
+              border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

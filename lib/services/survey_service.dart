@@ -12,9 +12,8 @@ class SurveyService {
       final token = box.get('token');
 
       // Get school_id from user data if available
-      final schoolId = user?['school_college_id'] ?? 
-                      user?['userdetails']?['school_id'] ?? 
-                      1;
+      final schoolId =
+          user?['school_college_id'] ?? user?['userdetails']?['school_id'] ?? 1;
 
       final response = await _dio.post(
         'postsurveys',

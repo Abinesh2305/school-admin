@@ -142,9 +142,7 @@ class ExamService {
         for (final key in ['marksentryitems', 'marks', 'results', 'data']) {
           if (raw.containsKey(key) && raw[key] is List) {
             return (raw[key] as List)
-                .map<Map<String, dynamic>>(
-                  (e) => Map<String, dynamic>.from(e),
-                )
+                .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e))
                 .toList();
           }
         }

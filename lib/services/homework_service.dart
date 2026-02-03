@@ -54,7 +54,9 @@ class HomeworkService {
             "submissionDate": map["is_hw_submission_date"] ?? "",
             // Legacy attachments (keep for backward compatibility)
             "attachments": (map["is_file_attachments"] ?? [])
-                .map((a) => a is Map ? a["img"]?.toString() ?? "" : a.toString())
+                .map(
+                  (a) => a is Map ? a["img"]?.toString() ?? "" : a.toString(),
+                )
                 .where((url) => url.isNotEmpty)
                 .toList(),
             // New attachment types (similar to notifications)
@@ -62,7 +64,6 @@ class HomeworkService {
             "is_files_attachment": map["is_files_attachment"] ?? [],
             "is_video_attachment": map["is_video_attachment"],
             "is_attachment": map["is_attachment"], // audio
-
             // new fields from backend
             "read_status": map["read_status"] ?? "UNREAD",
             "ack_status": map["ack_status"] ?? "PENDING",
@@ -170,7 +171,6 @@ class HomeworkService {
 
     return response.statusCode == 200 && response.data['status'] == 1;
   }
-
 
   Future<void> acknowledge(String homeworkRef) async {
     final box = Hive.box('settings');

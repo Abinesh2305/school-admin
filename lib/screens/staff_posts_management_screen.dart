@@ -9,10 +9,12 @@ class StaffPostsManagementScreen extends StatefulWidget {
   const StaffPostsManagementScreen({super.key});
 
   @override
-  State<StaffPostsManagementScreen> createState() => _StaffPostsManagementScreenState();
+  State<StaffPostsManagementScreen> createState() =>
+      _StaffPostsManagementScreenState();
 }
 
-class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen> {
+class _StaffPostsManagementScreenState
+    extends State<StaffPostsManagementScreen> {
   List<dynamic> _staffPosts = [];
   bool _loading = true;
   final NotificationService _notificationService = NotificationService();
@@ -30,10 +32,13 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
       final posts = await _notificationService.getPostCommunications();
       setState(() {
         // Filter posts that are from staff or have staff_post flag
-        _staffPosts = posts.where((post) => 
-          post['type'] == 'staff_post' || 
-          post['created_by_type'] == 'staff'
-        ).toList();
+        _staffPosts = posts
+            .where(
+              (post) =>
+                  post['type'] == 'staff_post' ||
+                  post['created_by_type'] == 'staff',
+            )
+            .toList();
         _loading = false;
       });
     } catch (e) {
@@ -51,9 +56,7 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => StaffPostFormScreen(
-          richTextController: controller,
-        ),
+        builder: (_) => StaffPostFormScreen(richTextController: controller),
       ),
     );
     controller.dispose();
@@ -69,10 +72,8 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => StaffPostFormScreen(
-          post: post,
-          richTextController: controller,
-        ),
+        builder: (_) =>
+            StaffPostFormScreen(post: post, richTextController: controller),
       ),
     );
     controller.dispose();
@@ -108,13 +109,8 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
 
         await DioClient.dio.delete(
           'admin/staff-post/${post['id']}',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
-          data: {
-            'user_id': user['id'],
-            'api_token': token,
-          },
+          options: Options(headers: {'x-api-key': token}),
+          data: {'user_id': user['id'], 'api_token': token},
         );
 
         if (mounted) {
@@ -141,13 +137,8 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
 
       await DioClient.dio.post(
         'admin/staff-post/${post['id']}/approve',
-        options: Options(
-          headers: {'x-api-key': token},
-        ),
-        data: {
-          'user_id': user['id'],
-          'api_token': token,
-        },
+        options: Options(headers: {'x-api-key': token}),
+        data: {'user_id': user['id'], 'api_token': token},
       );
 
       if (mounted) {
@@ -168,9 +159,7 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Staff Posts Management'),
-      ),
+      appBar: AppBar(title: const Text('Staff Posts Management')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -220,9 +209,16 @@ class _StaffPostsManagementScreenState extends State<StaffPostsManagementScreen>
                                     Text(
                                       post['message']?.toString().substring(
                                             0,
-                                            (post['message']?.toString().length ?? 0) > 50
+                                            (post['message']
+                                                            ?.toString()
+                                                            .length ??
+                                                        0) >
+                                                    50
                                                 ? 50
-                                                : (post['message']?.toString().length ?? 0),
+                                                : (post['message']
+                                                          ?.toString()
+                                                          .length ??
+                                                      0),
                                           ) ??
                                           '',
                                       maxLines: 2,
@@ -346,18 +342,14 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
         // Update existing staff post
         await DioClient.dio.put(
           'admin/staff-post/${widget.post['id']}',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
+          options: Options(headers: {'x-api-key': token}),
           data: data,
         );
       } else {
         // Create new staff post
         await DioClient.dio.post(
           'admin/staff-post',
-          options: Options(
-            headers: {'x-api-key': token},
-          ),
+          options: Options(headers: {'x-api-key': token}),
           data: data,
         );
       }
@@ -365,9 +357,11 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.post != null
-                ? 'Staff post updated successfully'
-                : 'Staff post created successfully'),
+            content: Text(
+              widget.post != null
+                  ? 'Staff post updated successfully'
+                  : 'Staff post created successfully',
+            ),
           ),
         );
         Navigator.pop(context, true);
@@ -375,9 +369,9 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving staff post: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving staff post: $e')));
       }
     }
   }
@@ -386,7 +380,9 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.post != null ? 'Edit Staff Post' : 'Create Staff Post'),
+        title: Text(
+          widget.post != null ? 'Edit Staff Post' : 'Create Staff Post',
+        ),
         actions: [
           if (_loading)
             const Padding(
@@ -398,10 +394,7 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveStaffPost,
-            ),
+            IconButton(icon: const Icon(Icons.save), onPressed: _saveStaffPost),
         ],
       ),
       body: Form(
@@ -435,4 +428,3 @@ class _StaffPostFormScreenState extends State<StaffPostFormScreen> {
     );
   }
 }
-

@@ -5,37 +5,35 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   static String? _baseUrl;
   static String? _appName;
-  
-  /// Initialize configuration from environment variables
+
   static Future<void> initialize() async {
     try {
       await dotenv.load(fileName: ".env");
+
       _baseUrl = dotenv.env['BASE_URL'];
       _appName = dotenv.env['APP_NAME'];
+
+      debugPrint("✅ ENV Loaded");
+      debugPrint("🌍 BASE_URL = $_baseUrl");
     } catch (e) {
-      debugPrint("⚠️ .env file not found, using defaults");
+      debugPrint("⚠️ .env not loaded: $e");
       _baseUrl = null;
       _appName = null;
     }
   }
-  
-  /// Get base URL for API calls
-  static String get baseUrl => _baseUrl ?? 'https://mock-backend.local';
-  
-  /// Get app name
-  static String get appName => _appName ?? 'ClasteqSMS';
-  
-  /// Check if running in mock mode
-  static bool get isMockMode => _baseUrl == null;
-  
-  /// Check if running in debug mode
-  static bool get isDebugMode => kDebugMode;
-  
-  /// Check if running in release mode
-  static bool get isReleaseMode => kReleaseMode;
-  
-  /// Get API timeout duration
-  static Duration get connectTimeout => const Duration(seconds: 10);
-  static Duration get receiveTimeout => const Duration(seconds: 15);
-}
 
+  /// Always return real API (no mock fallback)
+  static String get baseUrl =>
+      _baseUrl ?? 'https://api.clasteqsms.in/api/';
+
+  static String get appName => _appName ?? 'ClasteqSMS';
+
+  static bool get isDebugMode => kDebugMode;
+  static bool get isReleaseMode => kReleaseMode;
+
+  static Duration get connectTimeout =>
+      const Duration(seconds: 10);
+
+  static Duration get receiveTimeout =>
+      const Duration(seconds: 15);
+}

@@ -75,14 +75,11 @@ class NotificationService {
       return false;
     }
 
-    final body = {
-      "user_id": user['id'],
-      "api_token": token,
-      "post_id": postId,
-    };
+    final body = {"user_id": user['id'], "api_token": token, "post_id": postId};
 
     debugPrint(
-        "[acknowledgePost] Sending request to admin/communication/acknowledge");
+      "[acknowledgePost] Sending request to admin/communication/acknowledge",
+    );
     debugPrint("[acknowledgePost] Body: $body");
 
     try {
@@ -123,7 +120,8 @@ class NotificationService {
     final body = {
       "user_id": user['id'],
       "api_token": token,
-      "school_id": details['school_id'] ??
+      "school_id":
+          details['school_id'] ??
           details['school_college_id'] ??
           details['institute_id'] ??
           details['school'] ??
@@ -161,11 +159,7 @@ class NotificationService {
       return false;
     }
 
-    final body = {
-      "user_id": user['id'],
-      "api_token": token,
-      "post_id": postId,
-    };
+    final body = {"user_id": user['id'], "api_token": token, "post_id": postId};
 
     debugPrint("[markAsRead] Sending request to admin/communication/mark-read");
     debugPrint("[markAsRead] Body: $body");

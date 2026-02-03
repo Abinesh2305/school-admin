@@ -14,10 +14,7 @@ class AttendanceService {
       throw Exception("User not logged in");
     }
 
-    final body = {
-      "user_id": user['id'],
-      "monthyr": monthYear,
-    };
+    final body = {"user_id": user['id'], "monthyr": monthYear};
 
     final response = await _dio.post(
       'attendance',

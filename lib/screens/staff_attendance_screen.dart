@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'camera_blink_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -17,8 +16,8 @@ class StaffAttendanceScreen extends StatefulWidget {
 
 class _StaffAttendanceScreenState extends State<StaffAttendanceScreen> {
   // ================= CONFIG =================
-  final double officeLat = 11.511774;
-  final double officeLng = 78.644015;
+  final double officeLat = 11.498550;
+  final double officeLng = 78.644714;
   final double allowedRadius = 100; // meters
 
   // ================= STATE =================
