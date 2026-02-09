@@ -6,8 +6,7 @@ import '../screens/profile_screen.dart';
 import 'alerts_submenu_screen.dart';
 import 'staff_attendance_screen.dart';
 import '../screens/scholar_management/scholar_management_screen.dart';
-
-
+import 'academic_management/academic_management_screen.dart';
 class MenuScreen extends StatelessWidget {
   final VoidCallback onLogout;
 
@@ -40,6 +39,11 @@ class MenuScreen extends StatelessWidget {
         'icon': Icons.person,
         'label': 'Scholar Management',
         'action': 'ScholarManagement',
+      },
+      {
+        'icon': Icons.school_outlined,
+        'label': 'Academic Management',
+        'action': 'academicManagement',
       },
     ];
 
@@ -107,13 +111,18 @@ class MenuScreen extends StatelessWidget {
           MaterialPageRoute(builder: (_) => const StaffAttendanceScreen()),
         );
         break;
-        case 'ScholarManagement': 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ScholarManagementScreen(),
-        ),
-      );
+      case 'ScholarManagement':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ScholarManagementScreen()),
+        );
+        break;
+      case 'academicManagement':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AcademicManagementScreen()),
+        );
+        break;
     }
   }
 

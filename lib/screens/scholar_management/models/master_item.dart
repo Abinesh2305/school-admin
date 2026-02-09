@@ -3,7 +3,6 @@ class MasterItem {
   final String name;
   final bool isActive;
   late int sortOrder;
-  
 
   MasterItem({
     required this.id,
@@ -13,12 +12,11 @@ class MasterItem {
   });
 
   factory MasterItem.fromJson(Map<String, dynamic> json) {
-  return MasterItem(
-    id: json['id'],
-    name: json['name'],
-    isActive: json['isActive'],
-    sortOrder: json['sortOrder'] ?? 0, 
-  );
-}
-
+    return MasterItem(
+      id: json['id'],
+      name: json['name'],
+      isActive: json['isActive'],
+      sortOrder: json['sortOrder'] ?? 0,
+    );
+  }
 }

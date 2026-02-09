@@ -28,12 +28,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("cpldemo.jks")
-            storePassword = "123456"
-            keyAlias = "cpldemo"
-            keyPassword = "123456"
+            storeFile = file(project.property("MY_KEYSTORE_FILE") as String)
+            storePassword = project.property("MY_STORE_PASSWORD") as String
+            keyAlias = project.property("MY_KEY_ALIAS") as String
+            keyPassword = project.property("MY_KEY_PASSWORD") as String
         }
     }
+
 
     buildTypes {
         getByName("release") {

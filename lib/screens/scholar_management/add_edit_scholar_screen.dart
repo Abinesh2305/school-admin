@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'models/scholar_model.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'scholar_service.dart';
+import 'package:intl/intl.dart';
 
 class AddEditScholarScreen extends StatefulWidget {
   final Scholar? scholar;
+
   const AddEditScholarScreen({super.key, this.scholar});
 
   @override
@@ -13,10 +16,21 @@ class AddEditScholarScreen extends StatefulWidget {
 }
 
 class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
+  String? _nullIfEmpty(String value) {
+    final text = value.trim();
+
+    return text.isEmpty ? null : text;
+  }
+
   final _formKey = GlobalKey<FormState>();
+  final _scrollCtrl = ScrollController();
   bool detailed = false;
+  bool _saving = false;
+
   final ImagePicker _picker = ImagePicker();
   File? _studentImage;
+  List<int> classList = [];
+  List<int> sectionList = [];
 
   // Basic
   final firstNameCtrl = TextEditingController();
@@ -34,16 +48,15 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
   final motherEmailCtrl = TextEditingController();
 
   // Academic / Admin
-  String admissionType = '';
-  String scholarCategory = '';
-  String scholarType = '';
-  String division = '';
-  String house = '';
+  String? admissionType;
+  String? scholarCategory;
+  String? scholarType;
+  String? division;
+  String? house;
   DateTime? doj;
-
-  String medium = '';
-  String batch = '';
-  String motherTongue = '';
+  String? medium;
+  String? batch;
+  String? motherTongue;
 
   // IDs
   final emisCtrl = TextEditingController();
@@ -78,23 +91,139 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
   final idMark2Ctrl = TextEditingController();
 
   String gender = '';
-  String selectedClass = '';
-  String section = '';
+  int? selectedClassId;
+  int? selectedSectionId;
 
   @override
   void initState() {
     super.initState();
-    final s = widget.scholar;
-    if (s != null) {
-      firstNameCtrl.text = s.name;
-      admNoCtrl.text = s.admNo;
-      fatherCtrl.text = s.fatherName;
-      primaryMobileCtrl.text = s.mobile;
-      gender = s.gender;
-      selectedClass = s.className;
-      section = s.section;
 
-      _studentImage = s.studentImage;
+    _loadDropdowns();
+    if (widget.scholar != null) {
+      _loadScholarDetails(widget.scholar!.id);
+    }
+  }
+
+  Future<void> _uploadPhotoIfNeeded() async {
+    if (_studentImage == null) return;
+
+    final admissionNo = admNoCtrl.text.trim();
+
+    if (admissionNo.isEmpty) {
+      throw Exception('Admission No required for photo upload');
+    }
+
+    final service = ScholarService();
+
+    await service.uploadScholarPhoto(
+      file: _studentImage!,
+      admissionNo: admissionNo,
+    );
+  }
+
+  String? _matchDropdown(String? apiValue, List<String> items) {
+    if (apiValue == null) return null;
+
+    final v = apiValue.trim().toLowerCase();
+
+    for (final item in items) {
+      if (item.toLowerCase() == v) {
+        return item; // exact dropdown value
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _loadScholarDetails(int id) async {
+    try {
+      final service = ScholarService();
+
+      final s = await service.getById(id);
+      print('API admissionType = ${s.admissionType}');
+      print('API category = ${s.scholarCategory}');
+      print('API division = ${s.division}');
+      print('API house = ${s.house}');
+
+      setState(() {
+        // Basic
+        firstNameCtrl.text = s.firstName;
+        middleNameCtrl.text = s.middleName ?? '';
+        lastNameCtrl.text = s.lastName;
+
+        admNoCtrl.text = s.admissionNo;
+
+        doj = _parseDate(s.dob);
+        gender = s.gender;
+
+        selectedClassId = s.classId;
+        selectedSectionId = s.sectionId;
+
+        admissionType = _matchDropdown(s.admissionType, ['New', 'Transfer']);
+
+        scholarCategory = _matchDropdown(s.scholarCategory, [
+          'General',
+          'OBC',
+          'SC',
+          'ST',
+        ]);
+
+        scholarType = _matchDropdown(s.scholarType, ['Day Scholar', 'Hostel']);
+
+        division = _matchDropdown(s.division, ['Primary', 'Secondary']);
+
+        house = _matchDropdown(s.house, ['Red', 'Blue', 'Green']);
+
+        medium = _matchDropdown(s.medium, ['English', 'Tamil']);
+        batch = _matchDropdown(s.batch, ['2023-24', '2024-25']);
+        motherTongue = _matchDropdown(s.motherTongue, ['Tamil', 'English']);
+        fatherCtrl.text = s.fatherName;
+        motherCtrl.text = s.profile?.motherName ?? '';
+
+        primaryMobileCtrl.text = s.primaryMobile;
+        secondaryMobileCtrl.text = s.secondaryMobile ?? '';
+
+        // Socio
+        community = s.profile?.community ?? '';
+        bloodGroup = s.profile?.bloodGroup ?? '';
+        religionCtrl.text = s.profile?.religion ?? '';
+        casteCtrl.text = s.profile?.caste ?? '';
+
+        // Address
+        communicationAddressCtrl.text = s.address?.commAddressLine1 ?? '';
+
+        permanentAddressCtrl.text = s.address?.permAddressLine1 ?? '';
+
+        // IDs
+        aadhaarCtrl.text = s.identifiers?.aadhaar ?? '';
+        emisCtrl.text = s.identifiers?.emis ?? '';
+        apaarCtrl.text = s.identifiers?.apar ?? '';
+        udiseCtrl.text = s.identifiers?.udis ?? '';
+      });
+    } catch (e) {
+      debugPrint('Load detail error: $e');
+    }
+  }
+
+  Future<void> _loadDropdowns() async {
+    try {
+      final service = ScholarService();
+
+      // Example: Use lookup API or class API
+      final list = await service.getAll();
+
+      // Extract unique class IDs
+      final classes = list.map((e) => e.classId).toSet().toList();
+
+      // Extract unique section IDs
+      final sections = list.map((e) => e.sectionId).toSet().toList();
+
+      setState(() {
+        classList = classes;
+        sectionList = sections;
+      });
+    } catch (e) {
+      debugPrint('Dropdown load error: $e');
     }
   }
 
@@ -186,6 +315,7 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
   @override
   void dispose() {
     firstNameCtrl.dispose();
+    _scrollCtrl.dispose();
     middleNameCtrl.dispose();
     lastNameCtrl.dispose();
     admNoCtrl.dispose();
@@ -225,6 +355,16 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
     super.dispose();
   }
 
+  DateTime? _parseDate(String? date) {
+    if (date == null || date.isEmpty) return null;
+
+    try {
+      return DateTime.parse(date);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -253,15 +393,25 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
           const Text('Detailed', style: TextStyle(fontSize: 12)),
           const SizedBox(width: 6),
           TextButton(
-            onPressed: _save,
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
+
           const SizedBox(width: 8),
         ],
       ),
@@ -269,6 +419,7 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
+          controller: _scrollCtrl,
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,16 +444,20 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
                   'Male',
                   'Female',
                 ], (v) => setState(() => gender = v)),
-                _dropdown('Class*', selectedClass, [
-                  'I',
-                  'II',
-                  'III',
-                ], (v) => setState(() => selectedClass = v)),
-                _dropdown('Section*', section, [
-                  'A',
-                  'B',
-                  'C',
-                ], (v) => setState(() => section = v)),
+                _intDropdown(
+                  'Class*',
+                  selectedClassId,
+                  classList,
+                  (v) => setState(() => selectedClassId = v),
+                ),
+
+                _intDropdown(
+                  'Section*',
+                  selectedSectionId,
+                  sectionList,
+                  (v) => setState(() => selectedSectionId = v),
+                ),
+
                 _text(joiningGradeCtrl, 'Joining Grade'),
               ]),
 
@@ -482,6 +637,40 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
   }
 
   /* ================= HELPERS ================= */
+  Widget _dateField(
+    String label,
+    DateTime? value,
+    ValueChanged<DateTime?> onChanged,
+  ) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now(),
+          firstDate: DateTime(1990),
+          lastDate: DateTime.now(),
+        );
+
+        if (picked != null) {
+          onChanged(picked);
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          errorText: label.contains('*') && value == null ? 'Required' : null,
+        ),
+        child: Text(
+          value == null
+              ? 'Select date'
+              : '${value.day}-${value.month}-${value.year}',
+          style: TextStyle(color: value == null ? Colors.grey : Colors.black),
+        ),
+      ),
+    );
+  }
 
   Widget _sectionTitle(String title) {
     return Padding(
@@ -545,54 +734,58 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
 
   Widget _dropdown(
     String label,
-    String value,
+    String? value,
     List<String> items,
     ValueChanged<String> onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      initialValue: value.isEmpty ? null : value,
+      initialValue: items.contains(value) ? value : null,
+
       validator: label.contains('*')
           ? (v) => v == null ? 'Required' : null
           : null,
+
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
         isDense: true,
       ),
+
       items: items
-          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
           .toList(),
+
       onChanged: (v) => onChanged(v!),
     );
   }
 
-  Widget _dateField(
+  Widget _intDropdown(
     String label,
-    DateTime? value,
-    ValueChanged<DateTime> onPick,
+    int? value,
+    List<int> items,
+    ValueChanged<int?> onChanged,
   ) {
-    return InkWell(
-      onTap: () async {
-        final picked = await showDatePicker(
-          context: context,
-          firstDate: DateTime(2000),
-          lastDate: DateTime.now(),
-          initialDate: value ?? DateTime.now(),
-        );
-        if (picked != null) onPick(picked);
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          isDense: true,
-        ),
-        child: Text(
-          value == null
-              ? 'Select date'
-              : '${value.day}-${value.month}-${value.year}',
-        ),
+    return DropdownButtonFormField<int>(
+      initialValue: items.contains(value) ? value : null,
+
+      validator: label.contains('*')
+          ? (v) => v == null ? 'Required' : null
+          : null,
+
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
       ),
+
+      items: items.map((e) {
+        return DropdownMenuItem<int>(
+          value: e,
+          child: Text(e.toString()), // show number
+        );
+      }).toList(),
+
+      onChanged: onChanged,
     );
   }
 
@@ -640,20 +833,125 @@ class _AddEditScholarScreenState extends State<AddEditScholarScreen> {
     );
   }
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  void _save() async {
+    if (_saving) return;
+    if (!_formKey.currentState!.validate()) {
+      _scrollCtrl.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+      return;
+    }
 
-    final scholar = Scholar(
-      admNo: admNoCtrl.text.trim(),
-      name: firstNameCtrl.text.trim(),
-      className: selectedClass,
-      section: section,
-      gender: gender,
-      mobile: primaryMobileCtrl.text.trim(),
-      fatherName: fatherCtrl.text.trim(),
-      studentImage: _studentImage,
-    );
+    if (gender.isEmpty ||
+        admissionType == null ||
+        scholarCategory == null ||
+        scholarType == null ||
+        division == null ||
+        house == null ||
+        doj == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all mandatory fields')),
+      );
+      return;
+    }
 
-    Navigator.pop(context, scholar);
+    setState(() => _saving = true);
+
+    try {
+      final service = ScholarService();
+
+      final scholar = Scholar(
+        id: widget.scholar?.id ?? 0,
+
+        admissionNo: admNoCtrl.text.trim(),
+
+        firstName: firstNameCtrl.text.trim(),
+        middleName: middleNameCtrl.text.trim().isEmpty
+            ? null
+            : middleNameCtrl.text.trim(),
+        lastName: lastNameCtrl.text.trim(),
+
+        classId: selectedClassId!,
+        sectionId: selectedSectionId!,
+
+        gender: gender,
+        dob: doj == null ? null : DateFormat('yyyy-MM-dd').format(doj!),
+        admissionType: admissionType!,
+        scholarCategory: scholarCategory!,
+        scholarType: scholarType!,
+        division: division!,
+        house: house!,
+        medium: medium,
+        batch: batch,
+        motherTongue: motherTongue,
+
+        fatherName: fatherCtrl.text.trim(),
+
+        primaryMobile: primaryMobileCtrl.text.trim(),
+        secondaryMobile: secondaryMobileCtrl.text.trim().isEmpty
+            ? null
+            : secondaryMobileCtrl.text.trim(),
+
+        profile: Profile(
+          motherName: motherCtrl.text.trim(),
+          guardianName: guardianNameCtrl.text.trim().isEmpty
+              ? null
+              : guardianNameCtrl.text.trim(),
+          guardianRelation: null,
+          religion: _nullIfEmpty(religionCtrl.text),
+          community: community,
+          caste: casteCtrl.text.trim().isEmpty ? null : casteCtrl.text.trim(),
+          bloodGroup: bloodGroup,
+          appInstalled: false,
+        ),
+
+        address: Address(
+          commAddressLine1: communicationAddressCtrl.text.trim(),
+          commAddressLine2: null,
+          commCity: communicationAddressCtrl.text.trim(),
+          commPincode: '000000',
+
+          permAddressLine1: permanentAddressCtrl.text.trim(),
+          permAddressLine2: null,
+          permCity: permanentAddressCtrl.text.trim(),
+          permPincode: '000000',
+        ),
+
+        identifiers: Identifiers(
+          aadhaar: _nullIfEmpty(aadhaarCtrl.text),
+          emis: emisCtrl.text.trim().isEmpty ? null : emisCtrl.text.trim(),
+          apar: apaarCtrl.text.trim().isEmpty ? null : apaarCtrl.text.trim(),
+          udis: udiseCtrl.text.trim().isEmpty ? null : udiseCtrl.text.trim(),
+        ),
+      );
+
+      if (widget.scholar == null) {
+        // CREATE
+        await service.create(scholar);
+      } else {
+        // UPDATE
+        await service.update(widget.scholar!.id, scholar);
+      }
+
+      await _uploadPhotoIfNeeded();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Saved successfully')));
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('SAVE ERROR → $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 }

@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   setState(() => isLoading = false);
 
-  // ❌ LOGIN FAILED
+  // LOGIN FAILED
   if (response['success'] != true) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(response['message'] ?? t.loginFailed)),
